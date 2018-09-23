@@ -16,6 +16,44 @@ type segsAccum struct {
 	segs [][]string
 }
 
+// ---------------------------- Для многократного использования -------------------------
+type Segmentator struct {
+	DictPath  string
+	TextPath  string
+	dictSlice []string
+	textSlice []string
+	d         dict
+	fd        freqDict
+	init      bool
+}
+
+func (sr *Segmentator) GetSegmentation(str string) (segmentation []string, err error) {
+	if !sr.init {
+		var err error
+		sr.dictSlice, err = parseDict(sr.DictPath)
+		if err != nil {
+			return nil, err
+		}
+		sr.textSlice, err = parseText(sr.TextPath)
+		if err != nil {
+			return nil, err
+		}
+		sr.dictSlice = addWordsToDictFromText(sr.dictSlice, sr.textSlice)
+		sr.d = createDict(sr.dictSlice)
+		sr.fd = createFreqDict(sr.textSlice)
+		sr.init = true
+	}
+	sa := &segsAccum{segs: make([][]string, 0)}
+	getTextSegs(str, sr.d, sr.fd, make([]string, 0), sa)
+	seg, err := chooseBest(sr.fd, sa)
+	if err != nil {
+		return nil, err
+	}
+	return seg, nil
+}
+
+// ------------------------------------------------------------------------------------
+
 // Добавляет разбиение в slice разбиений
 func (sa *segsAccum) addSeg(seg []string) {
 	if sa.segs == nil {
@@ -136,7 +174,7 @@ func chooseBest(fd freqDict, sa *segsAccum) (bestSeg []string, err error) {
 	return sa.segs[bestNumber], nil
 }
 
-//Основная функция, возвращающая сегментацию текста
+//Основная функция для единоразового использования, возвращающая сегментацию текста
 func GetTextSegmentation(str string, dictPath string, textPath string) (segmentation []string, err error) {
 	dictSlice, err := parseDict(dictPath)
 	if err != nil {

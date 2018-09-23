@@ -19,8 +19,9 @@ var tests = []test{
 }
 
 func TestGetTextSegmentation(t *testing.T) {
+	sr := Segmentator{DictPath: "dict.txt", TextPath: "text.txt"}
 	for _, val := range tests {
-		seg, err := GetTextSegmentation(val.str, "dict.txt", "text.txt")
+		seg, err := sr.GetSegmentation(val.str)
 		if err != nil {
 			fmt.Println(err)
 			return
