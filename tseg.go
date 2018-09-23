@@ -1,6 +1,7 @@
 package tseg
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"unicode"
@@ -86,7 +87,7 @@ func createFreqDict(textSlice []string) freqDict {
 	fd := make(freqDict)
 	numberTextWords := len(textSlice)
 	for i := 1; i < numberTextWords; i++ {
-		fd[textSlice[i-1] + " " + textSlice[i]]++
+		fd[textSlice[i-1]+" "+textSlice[i]]++
 	}
 	for key := range fd {
 		fd[key] /= float64(numberTextWords)
@@ -110,7 +111,10 @@ func getTextSegs(str string, d dict, fd freqDict, seg []string, sa *segsAccum) {
 }
 
 // Выбирает наиболее вероятную сегментацию согласно частотному словарю биграм обучающего текста
-func chooseBest(fd freqDict, sa *segsAccum) (bestSeg []string) {
+func chooseBest(fd freqDict, sa *segsAccum) (bestSeg []string, err error) {
+	if len(sa.segs) == 0 {
+		return nil, fmt.Errorf("Сегментация не найдена")
+	}
 	var bestFreq float64
 	var bestNumber int
 	for i := range sa.segs {
@@ -129,11 +133,11 @@ func chooseBest(fd freqDict, sa *segsAccum) (bestSeg []string) {
 			bestNumber = i
 		}
 	}
-	return sa.segs[bestNumber]
+	return sa.segs[bestNumber], nil
 }
 
 //Основная функция, возвращающая сегментацию текста
-func GetTextSegmentation(str string, dictPath string, textPath string) ([]string, error) {
+func GetTextSegmentation(str string, dictPath string, textPath string) (segmentation []string, err error) {
 	dictSlice, err := parseDict(dictPath)
 	if err != nil {
 		return nil, err
@@ -147,5 +151,9 @@ func GetTextSegmentation(str string, dictPath string, textPath string) ([]string
 	fd := createFreqDict(textSlice)
 	sa := &segsAccum{segs: make([][]string, 0)}
 	getTextSegs(str, d, fd, make([]string, 0), sa)
-	return chooseBest(fd, sa), nil
+	seg, err := chooseBest(fd, sa)
+	if err != nil {
+		return nil, err
+	}
+	return seg, nil
 }
