@@ -1,7 +1,7 @@
 package tseg
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"strings"
 	"unicode"
@@ -9,40 +9,43 @@ import (
 
 type freqDict map[string]float64
 
-type dict map[string]int
+type dict map[string]struct{}
 
 // Структура для хранения всех разбиений строки вместо глобальной переменной
 type segsAccum struct {
 	segs [][]string
 }
 
-// ---------------------------- Для многократного использования -------------------------
+// Структура сегментатора
 type Segmentator struct {
-	DictPath  string
-	TextPath  string
+	dictPath  string
+	textPath  string
 	dictSlice []string
 	textSlice []string
 	d         dict
 	fd        freqDict
-	init      bool
 }
 
-func (sr *Segmentator) GetSegmentation(str string) (segmentation []string, err error) {
-	if !sr.init {
-		var err error
-		sr.dictSlice, err = parseDict(sr.DictPath)
-		if err != nil {
-			return nil, err
-		}
-		sr.textSlice, err = parseText(sr.TextPath)
-		if err != nil {
-			return nil, err
-		}
-		sr.dictSlice = addWordsToDictFromText(sr.dictSlice, sr.textSlice)
-		sr.d = createDict(sr.dictSlice)
-		sr.fd = createFreqDict(sr.textSlice)
-		sr.init = true
+// Конструктор сегментатора
+func NewSegmentator(dictPath, textPath string) (*Segmentator, error) {
+	sr := Segmentator{dictPath: dictPath, textPath: textPath}
+	var err error
+	sr.dictSlice, err = parseDict(sr.dictPath)
+	if err != nil {
+		return nil, err
 	}
+	sr.textSlice, err = parseText(sr.textPath)
+	if err != nil {
+		return nil, err
+	}
+	sr.dictSlice = addWordsToDictFromText(sr.dictSlice, sr.textSlice)
+	sr.d = createDict(sr.dictSlice)
+	sr.fd = createFreqDict(sr.textSlice)
+	return &sr, nil
+}
+
+// Главная функция, возвращающая разбиение строки
+func (sr *Segmentator) GetSegmentation(str string) (segmentation []string, err error) {
 	sa := &segsAccum{segs: make([][]string, 0)}
 	getTextSegs(str, sr.d, sr.fd, make([]string, 0), sa)
 	seg, err := chooseBest(sr.fd, sa)
@@ -51,8 +54,6 @@ func (sr *Segmentator) GetSegmentation(str string) (segmentation []string, err e
 	}
 	return seg, nil
 }
-
-// ------------------------------------------------------------------------------------
 
 // Добавляет разбиение в slice разбиений
 func (sa *segsAccum) addSeg(seg []string) {
@@ -110,12 +111,12 @@ func addWordsToDictFromText(dictSlice []string, textSlice []string) (newDict []s
 	return append(dictSlice, textSlice...)
 }
 
-// Создает словарь map[string]int, содержащий все слова
+// Создает словарь, содержащий все слова
 // из словаря и обучающего текста
 func createDict(dictSlice []string) dict {
 	d := make(dict)
 	for _, val := range dictSlice {
-		d[val] = 0
+		d[val] = struct{}{}
 	}
 	return d
 }
@@ -151,7 +152,7 @@ func getTextSegs(str string, d dict, fd freqDict, seg []string, sa *segsAccum) {
 // Выбирает наиболее вероятную сегментацию согласно частотному словарю биграм обучающего текста
 func chooseBest(fd freqDict, sa *segsAccum) (bestSeg []string, err error) {
 	if len(sa.segs) == 0 {
-		return nil, fmt.Errorf("Сегментация не найдена")
+		return nil, errors.New("Сегментация не найдена")
 	}
 	var bestFreq float64
 	var bestNumber int
@@ -172,26 +173,4 @@ func chooseBest(fd freqDict, sa *segsAccum) (bestSeg []string, err error) {
 		}
 	}
 	return sa.segs[bestNumber], nil
-}
-
-//Основная функция для единоразового использования, возвращающая сегментацию текста
-func GetTextSegmentation(str string, dictPath string, textPath string) (segmentation []string, err error) {
-	dictSlice, err := parseDict(dictPath)
-	if err != nil {
-		return nil, err
-	}
-	textSlice, err := parseText(textPath)
-	if err != nil {
-		return nil, err
-	}
-	dictSlice = addWordsToDictFromText(dictSlice, textSlice)
-	d := createDict(dictSlice)
-	fd := createFreqDict(textSlice)
-	sa := &segsAccum{segs: make([][]string, 0)}
-	getTextSegs(str, d, fd, make([]string, 0), sa)
-	seg, err := chooseBest(fd, sa)
-	if err != nil {
-		return nil, err
-	}
-	return seg, nil
 }
