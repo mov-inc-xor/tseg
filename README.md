@@ -11,6 +11,10 @@
 Нужен для того, чтобы определить вероятность расположения вместе двух слов.
 Сегментация сильно зависит от обучающего текста.
 
+### Установка
+
+`go get github.com/mov-inc-xor/tseg`
+
 ### Использование
 
 ```go
@@ -24,7 +28,12 @@ import (
 
 func main() {
 	str := "ilovetee"
-	seg, err := tseg.GetTextSegmentation(str, "dict.txt", "text.txt")
+	sr, err := tseg.NewSegmentator("dict.txt", "text.txt")
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
+	seg, err := sr.GetSegmentation(str)
 	if err != nil {
 		log.Fatalln(err)
 		return
@@ -34,18 +43,3 @@ func main() {
 ```
 
 `-> [i love tee]`
-
-### Для многократного использования
-
-```go
-func main() {
-	str := "ilovetee"
-	sr := tseg.Segmentator{DictPath:"dict.txt", TextPath:"text.txt"}
-	seg, err := sr.GetSegmentation(str)
-	if err != nil {
-		log.Fatalln(err)
-		return
-	}
-	fmt.Println(seg)
-}
-```
