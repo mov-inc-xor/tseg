@@ -27,7 +27,7 @@ import (
 )
 
 func main() {
-	str := "ilovetee"
+	str := "ilovetea"
 	sr, err := tseg.NewSegmentator("dict.txt", "text.txt")
 	if err != nil {
 		log.Fatalln(err)
@@ -42,4 +42,4 @@ func main() {
 }
 ```
 
-`-> [i love tee]`
+`-> [i love tea]`
